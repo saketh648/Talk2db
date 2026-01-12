@@ -108,6 +108,18 @@ with st.form("query_form", border=False):
 
 # Trigger logic only when button is clicked or Enter is pressed inside the form
 if submit_button and user_query:
+    # 1. EXTRACT VISUALIZATION INTENT
+    # Detect the requested chart type before cleaning the query for the AI
+    query_lower = user_query.lower()
+    viz_type = "bar"  # Default chart type
+    if "pie" in query_lower:
+        viz_type = "pie"
+    elif "line" in query_lower:
+        viz_type = "line"
+
+    # 2. CLEAN THE QUERY
+    # Remove chart keywords so they don't interfere with SQL generation
+    clean_user_query = user_query.replace("and pie chart", "").replace("pie chart", "").strip()
     max_retries = 2
     attempt = 0
     success = False
@@ -121,7 +133,7 @@ if submit_button and user_query:
                 # 1. Broaden Retrieval on Retry
                 # If we failed once, pull 5 tables instead of 3 to provide more context
                 current_k = 3 if attempt == 0 else 5
-                docs = vectorstore.similarity_search(user_query, k=current_k)
+                docs = vectorstore.similarity_search(clean_user_query, k=current_k)
                 schema_context = "\n".join([d.page_content for d in docs])
 
                 # 2. Build the "Aware" Prompt
@@ -151,7 +163,7 @@ if submit_button and user_query:
                 - User asks for 'Active' data: Use WHERE alias.status_id = 1
                 - User asks for 'Churned' data: Use WHERE alias.status_id = 4
 
-                Question: {user_query}
+                Question: {clean_user_query}
                 SQL:
                 """
 
@@ -179,25 +191,29 @@ if submit_button and user_query:
                     st.warning(f"Last Error: {error_feedback}")
 
     # 4. Results & Visualization (Outside the loop)
+    # 4. Results & Visualization (Outside the loop)
     if success and not df.empty:
         col_data, col_viz = st.columns([1, 1])
+        
         with col_data:
             st.subheader("📋 Data Preview")
             st.dataframe(df, use_container_width=True)
-            if show_sql: st.code(sql_raw, language="sql")
-        
+            # show_sql is the checkbox from your sidebar
+            if show_sql: 
+                st.code(sql_raw, language="sql")
+            
         with col_viz:
-            st.subheader("📈 AI Visualization")
+            st.subheader(f"📈 {viz_type.title()} Chart") # Dynamic title
+            
+            # Automatically identify axes
             nums = df.select_dtypes(include=['number']).columns
             cats = df.select_dtypes(include=['object', 'datetime']).columns
             
             if len(nums) > 0 and len(cats) > 0:
-                # Detect chart type from query
-                query_lower = user_query.lower()
-                
-                if "pie" in query_lower:
+                # Use the viz_type determined at the start of the script
+                if viz_type == "pie":
                     fig = px.pie(df, names=cats[0], values=nums[0], template="plotly_white")
-                elif "line" in query_lower:
+                elif viz_type == "line":
                     fig = px.line(df, x=cats[0], y=nums[0], template="plotly_white")
                 else:
                     # Default to Bar Chart
@@ -205,4 +221,4 @@ if submit_button and user_query:
                     
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.info("Direct data value returned.")
+                st.info("💡 Summary data retrieved. No categorical axes found for charting.")
