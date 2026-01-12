@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import pandas as pd
 import plotly.express as px
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_pinecone import PineconeVectorStore
@@ -26,24 +26,48 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- Resource Loading ---
+# --- Resource Loading with Connection Check ---
 @st.cache_resource
 def init_connections():
-    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    vectorstore = PineconeVectorStore(
-        index_name=os.getenv("PINECONE_INDEX_NAME"), 
-        embedding=embeddings
-    )
-    llm = ChatGroq(model="llama-3.3-70b-versatile", groq_api_key=os.getenv("GROQ_API_KEY"))
-    engine = create_engine(os.getenv("DATABASE_URL"))
-    return vectorstore, llm, engine
+    try:
+        # 1. Initialize AI Services
+        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        vectorstore = PineconeVectorStore(
+            index_name=os.getenv("PINECONE_INDEX_NAME"), 
+            embedding=embeddings
+        )
+        llm = ChatGroq(model="llama-3.3-70b-versatile", groq_api_key=os.getenv("GROQ_API_KEY"))
+        
+        # 2. Initialize Database and Test Connection
+        db_url = os.getenv("DATABASE_URL")
+        engine = create_engine(db_url)
+        
+        # Test the connection and get DB name
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            # Extract database name from the URL
+            db_name = engine.url.database
+            
+        return vectorstore, llm, engine, db_name, True
+    except Exception as e:
+        # Return status False and the error message
+        return None, None, None, str(e), False
 
-vectorstore, llm, engine = init_connections()
+# Initialize backend
+vectorstore, llm, engine, db_info, is_connected = init_connections()
 
 # --- Sidebar ---
 with st.sidebar:
     st.title("🛠️ NexusQuery Control")
-    st.success("✅ Connected to Cloud DB")
+    
+    if is_connected:
+        st.success(f"✅ Connected to: **{db_info}**")
+    else:
+        st.error("❌ Connection to DB failed")
+        st.warning(f"Error: {db_info}")
+        st.info("Ensure your DATABASE_URL is correct in your .env file.")
+    
+    st.divider()
     show_sql = st.checkbox("Show AI-Generated SQL", value=True)
     if st.button("🔄 Clear Cache"):
         st.cache_resource.clear()
@@ -53,13 +77,16 @@ with st.sidebar:
 st.title("🌐 Talk2DB: Scalable Relational Agent")
 st.write("This agent automatically discovers tables and performs JOINS using RAG.")
 
+# Only allow queries if connected
+if not is_connected:
+    st.stop()
+
 user_query = st.text_input(label="Enter your business question:", key="main_query_input")
 
 if user_query:
     with st.spinner("🔍 Discovering relevant tables and generating SQL..."):
         try:
             # 1. TABLE DISCOVERY (Scaling Logic)
-            # We search Pinecone for the top 3 most relevant table schemas
             docs = vectorstore.similarity_search(user_query, k=3)
             schema_context = "\n".join([d.page_content for d in docs])
 
@@ -114,4 +141,4 @@ if user_query:
                 st.warning("No results found.")
 
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Error processing query: {e}")
