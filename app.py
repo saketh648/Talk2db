@@ -190,6 +190,19 @@ if submit_button and user_query:
             st.subheader("📈 AI Visualization")
             nums = df.select_dtypes(include=['number']).columns
             cats = df.select_dtypes(include=['object', 'datetime']).columns
+            
             if len(nums) > 0 and len(cats) > 0:
-                fig = px.bar(df, x=cats[0], y=nums[0], color=cats[0], template="plotly_white")
+                # Detect chart type from query
+                query_lower = user_query.lower()
+                
+                if "pie" in query_lower:
+                    fig = px.pie(df, names=cats[0], values=nums[0], template="plotly_white")
+                elif "line" in query_lower:
+                    fig = px.line(df, x=cats[0], y=nums[0], template="plotly_white")
+                else:
+                    # Default to Bar Chart
+                    fig = px.bar(df, x=cats[0], y=nums[0], color=cats[0], template="plotly_white")
+                    
                 st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Direct data value returned.")
