@@ -1,0 +1,10 @@
+streamlit
+pandas
+plotly
+sqlalchemy
+psycopg2-binary
+python-dotenv
+langchain-groq
+langchain-pinecone
+langchain-huggingface
+sentence-transformers
