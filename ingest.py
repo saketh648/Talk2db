@@ -26,10 +26,11 @@ metadata_chunks = [
     "JOIN KEY: All tables (sales_table, customers_table, shipping_table) link via the 'customer_name' column.",
     "RULE: When joining, always alias tables: sales_table as 's', customers_table as 'c', and shipping_table as 'sh'.",
     
-    # --- Column Ownership (Prevents UndefinedColumn Errors) ---
-    "The 'region' and 'amt' columns exist ONLY in 'sales_table'.",
-    "The 'loyalty_segment' and 'plan_type' columns exist ONLY in 'customers_table'.",
-    "The 'shipping_method' and 'cost' columns exist ONLY in 'shipping_table'.",
+# --- FIXED: Column Ownership (Prevents UndefinedColumn Errors) ---
+    "Column 'status_id' exists ONLY in 'sales_table' (use s.status_id). It is NOT in customers_table.",
+    "Columns 'region' and 'amt' exist ONLY in 'sales_table' (use s.region, s.amt).",
+    "Columns 'loyalty_segment' and 'plan_type' exist ONLY in 'customers_table' (use c.loyalty_segment).",
+    "Columns 'shipping_method' and 'cost' exist ONLY in 'shipping_table' (use sh.shipping_method).",
 
     # --- Business Segments ---
     "Premium users: customers_table.plan_type IN ('Gold', 'Platinum').",
