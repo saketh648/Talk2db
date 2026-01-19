@@ -20,13 +20,29 @@ Talk2DB is an intelligent data assistant that translates natural language questi
    ```bash
    git clone [https://github.com/your-username/talk2db.git](https://github.com/your-username/talk2db.git)
    cd talk2db
-I2. nstall dependencies:
+2. **Install dependencies:**
 
 
-pip install -r requirements.txt
+   pip install -r requirements.txt
 
-Configure Environment Variables: Create a .env file with your keys for Groq, Pinecone, and Neon.
+3. **Configure Environment Variables: Create a .env file with your keys for Groq, Pinecone, and Neon.**
+      GROQ_API_KEY=your_groq_api_key
+      PINECONE_API_KEY=your_pinecone_api_key
+      NEON_DATABASE_URL=postgresql://user:password@host/dbname
 
-3.Run the App:
+4. **Run the App:**
+   streamlit run app.py
 
-streamlit run app.py
+5. **📈 Future Improvements**
+   🏗️ Metadata Crawler (Dynamic Schema Sync)
+   Real-time Updates: Implement a crawler function using SQLAlchemy to fetch newly added tables or modified columns and update Pinecone embeddings automatically.
+
+   Schema Evolution: Detect changes in data types or constraints to ensure the LLM always has the most accurate context.
+
+   🛡️ Security & Guardrails
+   Read-Only Enforcement: Add a validation layer to prevent any non-SELECT queries (e.g., DROP, DELETE, UPDATE) from being executed.
+
+   SQL Sanitization: Use a parser to verify generated SQL structure before sending it to the database.
+
+   📊 Enhanced Visualization
+   Auto-Charting: Integrate Plotly to automatically select the best chart type (Bar, Line, Pie) based on the query result set.
